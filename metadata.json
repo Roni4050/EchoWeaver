@@ -1,0 +1,6 @@
+{
+  "name": "EchoWeaver: A Generative Dream Game",
+  "description": "EchoWeaver is an interactive game where players weave dream narratives with the help of AI. Each player contribution inspires a new visual and textual evolution of a shared dreamscape, creating a unique, emergent story and artwork.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
