@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Stock Metadata Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5; /* Light mode background */
+        }
+        /* Dark mode styles */
+        .dark body {
+            background-color: #0f172a; /* slate-900 */
+            color: #cbd5e1; /* slate-300 */
+        }
+        .dark .card {
+            background-color: #1e293b; /* slate-800 */
+            border-color: #334155; /* slate-700 */
+        }
+        .dark .input-field {
+            background-color: #334155; /* slate-700 */
+            border-color: #475569; /* slate-600 */
+            color: #f1f5f9; /* slate-100 */
+        }
+        .dark .input-field::placeholder { color: #64748b; } /* slate-500 */
+        .dark .input-field:focus {
+            --tw-ring-color: #38bdf8; /* sky-500 */
+            border-color: #38bdf8;
+        }
+        .dark .table-header { background-color: #334155; } /* slate-700 */
+        .dark .table-body-row:hover { background-color: #334155; } /* slate-700 */
+        .dark .text-main { color: #f1f5f9; } /* slate-100 */
+        .dark .text-secondary { color: #94a3b8; } /* slate-400 */
+        .dark .text-tertiary { color: #64748b; } /* slate-500 */
+
+        /* Drop zone styling */
+        #dropZone {
+            border: 2px dashed #475569; /* slate-600 */
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+        }
+        #dropZone.dragover {
+            background-color: #334155; /* slate-700 */
+            border-color: #38bdf8; /* sky-500 */
+        }
+        
+        /* Loader animation */
+        .loader {
+            border: 4px solid #334155; /* slate-700 */
+            border-top: 4px solid #38bdf8; /* sky-500 */
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Modal styles */
+        .modal {
+            background-color: rgba(15, 23, 42, 0.8); /* slate-900 with opacity */
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .dark .modal-content {
+            background-color: #1e293b; /* slate-800 */
+        }
+        
+        /* Toggle Switch */
+        .switch { position: relative; display: inline-block; width: 40px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #475569; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #38bdf8; }
+        input:checked + .slider:before { transform: translateX(16px); }
+
+    </style>
+    <script>
+        // Set theme on initial load
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark')
+        } else {
+            document.documentElement.classList.remove('dark')
+        }
+    </script>
+</head>
+<body class="text-secondary">
+
+    <div class="flex h-screen bg-gray-100 dark:bg-slate-900">
+        <!-- Main Content -->
+        <main class="w-full overflow-y-auto p-6 lg:p-10">
+            <div class="max-w-7xl mx-auto">
+                <header class="mb-8 flex justify-between items-center">
+                    <div>
+                        <h1 class="text-4xl font-bold text-main">Stock Metadata Generator</h1>
+                        <p class="text-lg text-secondary mt-1">Upload images, videos & vectors to generate Adobe Stock compliant metadata with AI.</p>
+                    </div>
+                    <button id="themeToggle" class="flex-shrink-0 ml-4 px-4 py-2 text-secondary bg-gray-200 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 rounded-lg transition">
+                        <i class="fa-solid fa-sun mr-2 dark:hidden"></i>
+                        <i class="fa-solid fa-moon mr-2 hidden dark:inline"></i>
+                        <span class="dark:hidden">Light</span>
+                        <span class="hidden dark:inline">Dark</span>
+                    </button>
+                </header>
+
+                <!-- Configuration Section -->
+                <div class="card border p-6 rounded-xl shadow-sm mb-8">
+                     <h2 class="text-xl font-semibold text-main mb-4"><i class="fa-solid fa-sliders text-sky-500 mr-2"></i>Generation Options</h2>
+                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-4">
+                         <div>
+                             <label for="maxTitleLength" class="block text-sm font-medium text-secondary">Title Length (guideline)</label>
+                             <input type="number" id="maxTitleLength" value="70" class="mt-1 w-full p-2 input-field rounded-md shadow-sm focus:ring-2 focus:ring-sky-500">
+                         </div>
+                         <div>
+                             <label for="numKeywords" class="block text-sm font-medium text-secondary">Keywords</label>
+                             <input type="number" id="numKeywords" value="49" min="5" max="49" class="mt-1 w-full p-2 input-field rounded-md shadow-sm focus:ring-2 focus:ring-sky-500">
+                         </div>
+                         <div class="flex items-center justify-start pt-6">
+                             <label class="switch">
+                                 <input type="checkbox" id="addWhiteBgToggle">
+                                 <span class="slider"></span>
+                             </label>
+                             <label for="addWhiteBgToggle" class="ml-3 text-sm font-medium text-secondary">Add 'isolated on white background'</label>
+                         </div>
+                          <div class="flex items-center justify-start pt-6">
+                             <label class="switch">
+                                 <input type="checkbox" id="addTransparentBgToggle">
+                                 <span class="slider"></span>
+                             </label>
+                             <label for="addTransparentBgToggle" class="ml-3 text-sm font-medium text-secondary">Add 'isolated on transparent background'</label>
+                         </div>
+                     </div>
+                </div>
+
+
+                <!-- Upload Section -->
+                <div class="card border p-6 rounded-xl shadow-sm mb-8">
+                    <h2 class="text-xl font-semibold text-main mb-4"><i class="fa-solid fa-upload text-sky-500 mr-2"></i>Upload Files</h2>
+                    <div id="dropZone" class="bg-gray-50 dark:bg-slate-900/50 p-8 text-center rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700/50">
+                        <input type="file" id="fileInput" multiple accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime,video/x-msvideo,video/x-matroska,video/ogg,image/svg+xml,application/postscript,.ai,.eps" class="hidden">
+                        <i class="fa-solid fa-cloud-arrow-up text-4xl text-sky-500 mb-3"></i>
+                        <p class="text-main">Drag & drop files here, or <span class="font-semibold text-sky-500">browse</span></p>
+                        <p class="text-xs text-tertiary mt-1">Supports images, videos, and vectors (SVG, AI, EPS)</p>
+                    </div>
+                    <div id="filePreviews" class="mt-4 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4"></div>
+                    <div id="uploadProgressContainer" class="mt-4 hidden">
+                        <p id="overallProgressText" class="text-sm text-secondary mb-2">Processing files...</p>
+                        <div class="w-full bg-slate-700 rounded-full h-2.5">
+                            <div id="overallProgressBar" class="bg-sky-500 h-2.5 rounded-full transition-all duration-300"></div>
+                        </div>
+                    </div>
+                    <div id="validationMessages" class="mt-2 text-sm text-red-500"></div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="text-center mb-8 space-y-4">
+                    <button id="generateMetadataBtn" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fas fa-cogs mr-2"></i>Generate All Metadata
+                    </button>
+                </div>
+                
+                <!-- Output Section -->
+                <div id="outputSection" class="card border p-6 rounded-xl shadow-sm hidden">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+                        <h2 class="text-xl font-semibold text-main mb-3 md:mb-0"><i class="fa-solid fa-table-list text-sky-500 mr-2"></i>Generated Metadata</h2>
+                        <div class="flex space-x-2">
+                            <button id="exportCsvBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-md shadow text-sm transition"><i class="fas fa-file-csv mr-1"></i>Export CSV</button>
+                            <button id="exportJsonBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md shadow text-sm transition"><i class="fas fa-file-code mr-1"></i>Export JSON</button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table id="metadataTable" class="min-w-full divide-y divide-slate-700">
+                            <thead class="table-header">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Preview</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">File Name</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Title</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Description</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Keywords</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="metadataTableBody" class="divide-y divide-slate-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal -->
+    <div id="messageModal" class="modal fixed top-0 left-0 w-full h-full flex justify-center items-center z-50 opacity-0 invisible">
+        <div class="modal-content p-6 rounded-lg shadow-xl w-11/12 max-w-md">
+            <h3 id="modalTitle" class="text-lg font-medium text-main mb-2">Message</h3>
+            <p id="modalMessage" class="text-sm text-secondary mb-4"></p>
+            <button id="modalCloseBtn" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-md shadow transition">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const filePreviews = document.getElementById('filePreviews');
+        const generateMetadataBtn = document.getElementById('generateMetadataBtn');
+        const addWhiteBgToggle = document.getElementById('addWhiteBgToggle');
+        const addTransparentBgToggle = document.getElementById('addTransparentBgToggle');
+        const outputSection = document.getElementById('outputSection');
+        const metadataTableBody = document.getElementById('metadataTableBody');
+        const maxTitleLengthInput = document.getElementById('maxTitleLength');
+        const numKeywordsInput = document.getElementById('numKeywords');
+        const exportCsvBtn = document.getElementById('exportCsvBtn');
+        const exportJsonBtn = document.getElementById('exportJsonBtn');
+        const validationMessages = document.getElementById('validationMessages');
+        const overallProgressContainer = document.getElementById('uploadProgressContainer');
+        const overallProgressBar = document.getElementById('overallProgressBar');
+        const overallProgressText = document.getElementById('overallProgressText');
+        const themeToggle = document.getElementById('themeToggle');
+        const messageModal = document.getElementById('messageModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalCloseBtn = document.getElementById('modalCloseBtn');
+
+        // --- State Variables ---
+        let filesToProcess = [];
+        let generatedMetadata = [];
+
+        // --- Constants ---
+        const MAX_FILES = 1000;
+        const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        const SUPPORTED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/ogg'];
+        const SUPPORTED_VECTOR_TYPES = ['image/svg+xml', 'application/postscript', 'application/illustrator'];
+        const ALL_SUPPORTED_TYPES = [...SUPPORTED_IMAGE_TYPES, ...SUPPORTED_VIDEO_TYPES, ...SUPPORTED_VECTOR_TYPES];
+
+        // --- Helper Functions ---
+        const showModal = (title, message) => {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            messageModal.classList.remove('opacity-0', 'invisible');
+        };
+        const closeModal = () => messageModal.classList.add('opacity-0', 'invisible');
+        const toSentenceCase = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
+        const getBase64 = (file) => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result); // Return the full data URL
+            reader.onerror = error => reject(error);
+        });
+        
+        const convertSvgToPngDataUrl = (svgFile) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsText(svgFile);
+                reader.onload = (readerEvent) => {
+                    const svgText = readerEvent.target.result;
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const img = new Image();
+                    const svgBlob = new Blob([svgText], {type: 'image/svg+xml;charset=utf-8'});
+                    const url = URL.createObjectURL(svgBlob);
+
+                    img.onload = () => {
+                        canvas.width = img.width || 300;
+                        canvas.height = img.height || 150;
+                        ctx.drawImage(img, 0, 0);
+                        const pngDataUrl = canvas.toDataURL('image/png');
+                        URL.revokeObjectURL(url);
+                        resolve(pngDataUrl);
+                    };
+                    img.onerror = (e) => {
+                        URL.revokeObjectURL(url);
+                        console.error("Error loading SVG into Image object:", e);
+                        reject(new Error('Could not load SVG as an image.'));
+                    };
+                    img.src = url;
+                };
+                reader.onerror = (e) => {
+                    console.error("Error reading SVG file:", e);
+                    reject(new Error('Could not read SVG file.'));
+                };
+            });
+        };
+
+        // --- Video Thumbnail Generation ---
+        const generateVideoThumbnail = (file) => {
+            return new Promise((resolve) => {
+                const video = document.createElement('video');
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                
+                video.src = URL.createObjectURL(file);
+                video.muted = true;
+                
+                video.onloadeddata = () => {
+                    video.currentTime = 1; // Seek to 1 second to get a representative frame
+                };
+
+                video.onseeked = () => {
+                    // Use a timeout to ensure the frame is drawn correctly on all browsers
+                    setTimeout(() => {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const dataUrl = canvas.toDataURL('image/jpeg');
+                        URL.revokeObjectURL(video.src);
+                        resolve(dataUrl);
+                    }, 100);
+                };
+
+                video.onerror = () => {
+                    URL.revokeObjectURL(video.src);
+                    resolve(null); // Resolve with null if there's an error
+                };
+
+                // Play is needed to trigger seeking on some browsers
+                video.play().catch(() => {
+                    // Autoplay is often blocked, but the events should still fire.
+                });
+            });
+        };
+
+        // --- Dark Mode ---
+        themeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+        });
+
+        // --- Event Listeners ---
+        modalCloseBtn.addEventListener('click', closeModal);
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFiles(Array.from(e.dataTransfer.files));
+        });
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(Array.from(e.target.files));
+            fileInput.value = ''; 
+        });
+        
+        // --- File Handling Logic ---
+        async function handleFiles(newFiles) {
+            validationMessages.textContent = '';
+            let validFiles = [];
+            let invalidFileMessages = [];
+
+            if (filesToProcess.length + newFiles.length > MAX_FILES) {
+                validationMessages.textContent = `Cannot upload more than ${MAX_FILES} files.`;
+                return;
+            }
+
+            newFiles.forEach(file => {
+                const fileExtension = file.name.split('.').pop().toLowerCase();
+                if (ALL_SUPPORTED_TYPES.includes(file.type) || ['ai', 'eps'].includes(fileExtension)) {
+                    if (filesToProcess.length < MAX_FILES) validFiles.push(file);
+                } else {
+                    invalidFileMessages.push(`${file.name}: Unsupported file type.`);
+                }
+            });
+
+            if (invalidFileMessages.length > 0) {
+                validationMessages.innerHTML = invalidFileMessages.join('<br>');
+            }
+            
+            filesToProcess.push(...validFiles);
+            await renderFilePreviews();
+            generateMetadataBtn.disabled = filesToProcess.length === 0;
+        }
+
+        async function renderFilePreviews() {
+            filePreviews.innerHTML = ''; 
+            for (const [index, file] of filesToProcess.entries()) {
+                const previewElement = document.createElement('div');
+                previewElement.className = 'relative group';
+                
+                let mediaPreview;
+                const fileExtension = file.name.split('.').pop().toLowerCase();
+
+                if (file.type === 'image/svg+xml') {
+                    mediaPreview = document.createElement('img');
+                    mediaPreview.src = URL.createObjectURL(file); 
+                    mediaPreview.onload = () => URL.revokeObjectURL(mediaPreview.src);
+                } else if (SUPPORTED_IMAGE_TYPES.includes(file.type)) {
+                    mediaPreview = document.createElement('img');
+                    mediaPreview.src = URL.createObjectURL(file);
+                    mediaPreview.onload = () => URL.revokeObjectURL(mediaPreview.src);
+                } else if (SUPPORTED_VIDEO_TYPES.includes(file.type)) {
+                    mediaPreview = document.createElement('img'); // Use img for thumbnail
+                    mediaPreview.src = await generateVideoThumbnail(file) || 'https://placehold.co/100x75/1e293b/94a3b8?text=Video';
+                } else if (['ai', 'eps'].includes(fileExtension)) {
+                    mediaPreview = document.createElement('div');
+                    mediaPreview.className = 'w-full h-24 flex items-center justify-center bg-slate-700 rounded-lg shadow-md';
+                    mediaPreview.innerHTML = `<i class="fa-solid fa-file-invoice text-4xl text-amber-400"></i>`;
+                } else { 
+                    mediaPreview = document.createElement('div');
+                    mediaPreview.className = 'w-full h-24 flex items-center justify-center bg-slate-700 rounded-lg shadow-md';
+                    mediaPreview.innerHTML = `<i class="fa-solid fa-file text-4xl text-gray-400"></i>`;
+                }
+
+                if(mediaPreview.tagName === 'IMG') {
+                    mediaPreview.alt = file.name;
+                    mediaPreview.className = 'w-full h-24 object-cover rounded-lg shadow-md';
+                }
+                
+                const overlay = document.createElement('div');
+                overlay.className = 'absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg';
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'text-white text-2xl hover:text-red-500 transition-colors';
+                removeBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+                removeBtn.onclick = () => removeFile(index); 
+
+                overlay.appendChild(removeBtn);
+                previewElement.appendChild(mediaPreview);
+                previewElement.appendChild(overlay);
+                filePreviews.appendChild(previewElement);
+            }
+        }
+
+        function removeFile(indexToRemove) {
+            filesToProcess.splice(indexToRemove, 1);
+            generatedMetadata = generatedMetadata.filter((_, i) => i !== indexToRemove); 
+            renderFilePreviews(); 
+            renderMetadataTable(); 
+            generateMetadataBtn.disabled = filesToProcess.length === 0;
+            if (filesToProcess.length === 0) {
+                outputSection.classList.add('hidden');
+                overallProgressContainer.classList.add('hidden');
+            }
+        }
+
+        // --- Metadata Generation Core Logic (Updated for OpenRouter) ---
+
+        /**
+         * Processes a single file to generate metadata using the OpenRouter API.
+         * @param {File} file - The file to process.
+         * @returns {Promise<object>} A promise that resolves with the generated metadata object.
+         */
+        async function processSingleFile(file) {
+            const isVideo = SUPPORTED_VIDEO_TYPES.includes(file.type);
+            const isSvg = file.type === 'image/svg+xml';
+            const isOtherVector = ['application/postscript', 'application/illustrator'].includes(file.type) || ['ai', 'eps'].includes(file.name.split('.').pop().toLowerCase());
+            
+            let fileTypeForPrompt = isVideo ? 'video' : (isSvg || isOtherVector) ? 'vector graphic' : 'image';
+
+            // --- OpenRouter API Configuration ---
+            const apiKey = "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";
+            const apiUrl = "https://openrouter.ai/api/v1/chat/completions";
+            const model = "google/gemini-flash-1.5"; 
+
+            const numKw = parseInt(numKeywordsInput.value) || 49;
+            const titleLength = parseInt(maxTitleLengthInput.value) || 70;
+
+            let promptText;
+            const messageContent = [];
+            let dataUrl = null;
+
+            if (isSvg) {
+                try {
+                    dataUrl = await convertSvgToPngDataUrl(file);
+                } catch (e) {
+                    console.error("SVG conversion failed, proceeding without image data.", e);
+                }
+            } else if (!isOtherVector && !isVideo) { // Standard images
+                 dataUrl = await getBase64(file);
+            } else if (isVideo) {
+                 dataUrl = await generateVideoThumbnail(file);
+            }
+
+            if (dataUrl) {
+                // This prompt is for files with a visual preview (images, videos, SVG)
+                promptText = `Analyze this ${fileTypeForPrompt} (filename: "${file.name}") and generate metadata for Adobe Stock following these strict guidelines:
+
+**1. TITLE (REQUIRED):**
+- **Length:** Maximum ${titleLength} characters.
+- **Style:** Use natural, descriptive, and specific language in sentence case (only the first letter is capitalized).
+- **Content:** Describe what a buyer would search for.
+- **AVOID:**
+    - Generic titles like "IMG_12345", "Beautiful photo", "BEST VECTOR EVER!!!".
+    - Overusing adjectives (e.g., "amazing", "perfect").
+    - Model/brand names (e.g., "Canon", "iPhone", "Nike").
+    - The words "image", "photo", or "vector".
+- **Good Example:** "A young woman practicing yoga on a beach at sunrise".
+
+**2. KEYWORDS (REQUIRED):**
+- **Quantity:** Generate exactly ${numKw} keywords.
+- **Order:** List keywords from most important to least important.
+- **Format:** Use lowercase, singular words (unless the plural form is more common or accurate). No punctuation.
+- **Content:**
+    - Include both literal and conceptual terms (e.g., for a running man: "fitness, runner, motion, training, male").
+    - Use compound words where appropriate (e.g., "black and white", "copy space").
+    - Include emotional or conceptual keywords (e.g., "freedom", "sadness", "teamwork").
+    - Consider seasonality, location, color, and style.
+- **AVOID:**
+    - Brand names ("Apple", "Gucci"), celebrity names, or artist names.
+    - Repetitive or irrelevant terms.
+    - Keyword spamming with unrelated trending terms.
+- **Good Example:** "kitchen, interior, modern, wooden, cabinets, home, cooking, furniture".
+
+**OUTPUT FORMAT:**
+You MUST respond with ONLY a valid JSON object, and nothing else. Do not include any explanatory text, markdown formatting, or code fences. The JSON object must have this exact structure:
+{
+  "title": "string",
+  "keywords": ["string", "string", ...]
+}`;
+                messageContent.push({ type: "text", text: promptText });
+                messageContent.push({
+                    type: "image_url",
+                    image_url: { url: dataUrl }
+                });
+            } else {
+                // This prompt is for files WITHOUT a visual preview (EPS, AI)
+                promptText = `A vector graphic file (e.g., AI, EPS) named "${file.name}" was uploaded, but it cannot be visually previewed. Generate metadata for Adobe Stock based ONLY on the information available in the filename.
+
+**Instructions:**
+1.  Infer the subject matter and style strictly from the filename.
+2.  Do not invent visual details that cannot be derived from the filename.
+3.  If the filename is generic (e.g., "vector_01.eps"), your title should reflect that you cannot determine the content (e.g., "Abstract vector element").
+
+**1. TITLE (REQUIRED):**
+- **Length:** Maximum ${titleLength} characters.
+- **Style:** Natural, descriptive, sentence case, based on the filename.
+- **Good Example (for "business_infographic_icons.ai"):** "A set of business infographic icons".
+
+**2. KEYWORDS (REQUIRED):**
+- **Quantity:** Generate up to ${numKw} keywords.
+- **Order:** Most important to least important.
+- **Content:** Infer all keywords from the filename.
+- **Good Example (for "business_infographic_icons.ai"):** "business, infographic, icons, set, data, presentation, chart, graph, marketing, vector".
+
+**OUTPUT FORMAT:**
+You MUST respond with ONLY a valid JSON object, and nothing else. The JSON object must have this exact structure:
+{
+  "title": "string",
+  "keywords": ["string", "string", ...]
+}`;
+                messageContent.push({ type: "text", text: promptText });
+            }
+
+
+            const payload = {
+                model: model,
+                messages: [{ role: "user", content: messageContent }],
+                response_format: { "type": "json_object" } // Request JSON output directly
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`API Error (${response.status}): ${errorData.error?.message || 'Unknown error'}`);
+            }
+
+            const result = await response.json();
+            const textResponse = result?.choices?.[0]?.message?.content;
+
+            if (!textResponse) {
+                throw new Error('API returned an empty or invalid response.');
+            }
+
+            let parsedJson;
+            try {
+                parsedJson = JSON.parse(textResponse);
+            } catch (e) {
+                console.error("JSON parsing error for response:", textResponse);
+                throw new Error('Failed to parse AI response. Model may have returned invalid JSON.');
+            }
+
+            let baseTitle = toSentenceCase(parsedJson.title || '');
+            
+            if (addWhiteBgToggle.checked) baseTitle += ' isolated on white background';
+            if (addTransparentBgToggle.checked) baseTitle += ' isolated on transparent background';
+
+            return {
+                title: baseTitle,
+                description: baseTitle, // Title and description are the same
+                keywords: [...new Set((parsedJson.keywords || []).map(kw => kw.toLowerCase().trim()))].slice(0, numKw)
+            };
+        }
+
+        // --- Main Button Event Listener ---
+        generateMetadataBtn.addEventListener('click', async () => {
+            if (filesToProcess.length === 0) {
+                showModal('No Files', 'Please upload some files first.');
+                return;
+            }
+
+            generateMetadataBtn.disabled = true;
+            generateMetadataBtn.innerHTML = '<div class="loader mr-2 inline-block animate-spin"></div> Generating...';
+            outputSection.classList.remove('hidden');
+            overallProgressContainer.classList.remove('hidden');
+            overallProgressBar.style.width = '0%';
+            overallProgressText.textContent = `Processing 0 of ${filesToProcess.length} files...`;
+            
+            generatedMetadata = []; 
+            metadataTableBody.innerHTML = ''; 
+            
+            // Prepare all placeholder rows first
+            for (let i = 0; i < filesToProcess.length; i++) {
+                const file = filesToProcess[i];
+                const isVideo = SUPPORTED_VIDEO_TYPES.includes(file.type);
+                let previewSrc = isVideo ? await generateVideoThumbnail(file) : URL.createObjectURL(file);
+                
+                const placeholderData = {
+                    id: `row-${i}`,
+                    fileName: file.name,
+                    title: '', description: '', keywords: [],
+                    previewSrc: previewSrc,
+                    status: 'loading'
+                };
+                generatedMetadata.push(placeholderData);
+                addMetadataRowToTable(placeholderData, i);
+            }
+
+            let filesProcessedCount = 0;
+            // Process files sequentially to avoid rate-limiting issues
+            for (let i = 0; i < filesToProcess.length; i++) {
+                const file = filesToProcess[i];
+                const metadataIndex = i;
+
+                try {
+                    const result = await processSingleFile(file);
+                    Object.assign(generatedMetadata[metadataIndex], { ...result, status: 'success' });
+                } catch (error) {
+                    console.error(`Error processing ${file.name}:`, error);
+                    let errorMessage = error.message.includes('429') ? 'Rate limit hit. Try again later.' : error.message;
+                    Object.assign(generatedMetadata[metadataIndex], { title: 'Error', description: errorMessage.substring(0, 100), status: 'error' });
+                }
+                
+                updateMetadataRowInTable(generatedMetadata[metadataIndex]);
+                
+                filesProcessedCount++;
+                overallProgressBar.style.width = `${(filesProcessedCount / filesToProcess.length) * 100}%`;
+                overallProgressText.textContent = `Processed ${filesProcessedCount} of ${filesToProcess.length} files.`;
+            }
+            
+            // Clean up object URLs after processing
+            generatedMetadata.forEach(data => {
+                if (data.previewSrc && data.previewSrc.startsWith('blob:')) {
+                    URL.revokeObjectURL(data.previewSrc);
+                }
+            });
+
+            generateMetadataBtn.disabled = false;
+            generateMetadataBtn.innerHTML = '<i class="fas fa-cogs mr-2"></i>Generate All Metadata';
+        });
+
+        async function regenerateSingleFile(index) {
+            const row = document.getElementById(`row-${index}`);
+            if (!row) return;
+
+            // Update UI to show loading state for this row
+            const statusCell = row.querySelector('.status-cell');
+            const actionCell = row.querySelector('.action-cell');
+            statusCell.innerHTML = '<div class="loader animate-spin"></div>';
+            actionCell.innerHTML = ''; // Clear actions while regenerating
+
+            const file = filesToProcess[index];
+            try {
+                const result = await processSingleFile(file);
+                Object.assign(generatedMetadata[index], { ...result, status: 'success' });
+            } catch (error) {
+                console.error(`Error regenerating ${file.name}:`, error);
+                let errorMessage = error.message.includes('429') ? 'Rate limit hit. Try again later.' : error.message;
+                Object.assign(generatedMetadata[index], { title: 'Error', description: errorMessage.substring(0, 100), status: 'error' });
+            }
+            
+            updateMetadataRowInTable(generatedMetadata[index]);
+        }
+
+
+        function addMetadataRowToTable(data, index) { 
+            const row = document.createElement('tr');
+            row.id = data.id; 
+            row.className = 'table-body-row align-top';
+
+            let previewHtml = '';
+            const fileExtension = data.fileName.split('.').pop().toLowerCase();
+
+            if (data.previewSrc && !data.previewSrc.includes("placehold.co")) {
+                 previewHtml = `<img src="${data.previewSrc}" alt="${data.fileName}" class="w-24 h-16 object-cover rounded-md shadow-sm">`;
+            } else if (['ai', 'eps'].includes(fileExtension)) {
+                previewHtml = `<div class="w-24 h-16 flex items-center justify-center bg-slate-700 rounded-md shadow-sm"><i class="fa-solid fa-file-invoice text-4xl text-amber-400"></i></div>`;
+            } else {
+                previewHtml = `<div class="w-24 h-16 flex items-center justify-center bg-slate-700 rounded-md shadow-sm"><i class="fa-solid fa-file text-4xl text-gray-400"></i></div>`;
+            }
+
+            row.innerHTML = `
+                <td class="px-4 py-3">${previewHtml}</td>
+                <td class="px-4 py-3 text-sm text-secondary truncate max-w-xs">${data.fileName}</td>
+                <td class="px-4 py-3"><input type="text" value="${data.title}" class="w-full p-1.5 input-field rounded-md text-sm" ${data.status !== 'success' ? 'disabled' : ''}></td>
+                <td class="px-4 py-3"><textarea rows="3" class="w-full p-1.5 input-field rounded-md text-sm" ${data.status !== 'success' ? 'disabled' : ''}>${data.description}</textarea></td>
+                <td class="px-4 py-3"><textarea rows="3" class="w-full p-1.5 input-field rounded-md text-sm" ${data.status !== 'success' ? 'disabled' : ''}>${data.keywords.join(', ')}</textarea></td>
+                <td class="px-4 py-3 text-sm status-cell"></td>
+                <td class="px-4 py-3 text-sm action-cell"></td>
+            `;
+            
+            const statusCell = row.querySelector('.status-cell');
+            const actionCell = row.querySelector('.action-cell');
+
+            if (data.status === 'loading') {
+                statusCell.innerHTML = '<div class="loader animate-spin"></div>';
+            } else {
+                 updateMetadataRowInTable(data);
+            }
+            
+            metadataTableBody.appendChild(row);
+        }
+
+        function updateMetadataRowInTable(data) { 
+            const index = parseInt(data.id.split('-')[1]);
+            const row = document.getElementById(data.id);
+            if (!row) return;
+
+            const inputs = row.querySelectorAll('input, textarea');
+            inputs[0].value = data.title;
+            inputs[1].value = data.description;
+            inputs[2].value = data.keywords.join(', ');
+            inputs.forEach(input => input.disabled = data.status !== 'success');
+
+            const statusCell = row.querySelector('.status-cell');
+            const actionCell = row.querySelector('.action-cell');
+            actionCell.innerHTML = ''; // Clear previous actions
+
+            if (data.status === 'success') {
+                statusCell.innerHTML = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100">Success</span>';
+                const regenButton = document.createElement('button');
+                regenButton.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i>';
+                regenButton.title = 'Regenerate';
+                regenButton.className = 'p-2 rounded-md hover:bg-slate-600 transition';
+                regenButton.onclick = () => regenerateSingleFile(index);
+                actionCell.appendChild(regenButton);
+
+            } else if (data.status === 'error') {
+                statusCell.innerHTML = `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-100" title="${data.description}">Error</span>`;
+                 const regenButton = document.createElement('button');
+                regenButton.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i>';
+                regenButton.title = 'Regenerate';
+                regenButton.className = 'p-2 rounded-md hover:bg-slate-600 transition';
+                regenButton.onclick = () => regenerateSingleFile(index);
+                actionCell.appendChild(regenButton);
+            }
+        }
+
+        function renderMetadataTable() {
+            metadataTableBody.innerHTML = '';
+            generatedMetadata.forEach((data, index) => addMetadataRowToTable(data, index));
+        }
+
+        // --- Export Logic ---
+        function getCurrentTableData() {
+            return Array.from(metadataTableBody.getElementsByTagName('tr')).map((row, i) => {
+                const originalEntry = generatedMetadata[i];
+                if (!originalEntry) return null;
+                const inputs = row.querySelectorAll('input, textarea');
+                return {
+                    fileName: originalEntry.fileName,
+                    title: inputs[0].value,
+                    description: inputs[1].value,
+                    keywords: inputs[2].value.split(',').map(k => k.trim()).filter(Boolean),
+                    status: originalEntry.status
+                };
+            }).filter(Boolean);
+        }
+
+        exportCsvBtn.addEventListener('click', () => {
+            const dataToExport = getCurrentTableData().filter(item => item.status === 'success');
+            if (dataToExport.length === 0) {
+                showModal('No Data', 'No successful metadata to export.');
+                return;
+            }
+            let csvContent = "data:text/csv;charset=utf-8," + "File Name,Title,Description,Keywords\r\n";
+            dataToExport.forEach(item => {
+                const row = [
+                    `"${item.fileName.replace(/"/g, '""')}"`, 
+                    `"${item.title.replace(/"/g, '""')}"`, 
+                    `"${item.description.replace(/"/g, '""')}"`, 
+                    `"${item.keywords.join(', ')}"`
+                ].join(",");
+                csvContent += row + "\r\n";
+            });
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", "stock_metadata.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        exportJsonBtn.addEventListener('click', () => {
+            const dataToExport = getCurrentTableData().filter(item => item.status === 'success').map(({ status, ...rest }) => rest);
+            if (dataToExport.length === 0) {
+                showModal('No Data', 'No successful metadata to export.');
+                return;
+            }
+            const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'stock_metadata.json';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        });
+
+    </script>
+</body>
+</ht
